@@ -82,7 +82,10 @@ def test_timeout_branch_marks_working_copies_not_parsed_and_can_stop_afterfx():
 def test_parser_batch_loop_keeps_successful_templates_when_one_template_fails():
     parse_loop = JSX[JSX.index("for (var i = 0; i < config.templates.length; i++)") :]
 
-    assert "output.templates.push(scanProject(templateConfig));" in parse_loop
+    # Results are streamed one file per template and only a summary is pushed
+    # (round 8 superseded the single-output-object form).
+    assert "scanProject(templateConfig" in parse_loop
+    assert "output.templates.push(summarizeTemplate(" in parse_loop
     assert "catch (templateError)" in parse_loop
     assert "status: 'error'" in parse_loop
     assert "error: String(templateError)" in parse_loop

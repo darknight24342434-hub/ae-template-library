@@ -1,12 +1,52 @@
 import json
+import subprocess
+import tempfile
 from pathlib import Path
+
+import pytest
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+INVENTORY_PATH = PROJECT_ROOT / "template_inventory.json"
+
+
+@pytest.fixture(scope="module", autouse=True)
+def ensure_inventory_exists():
+    """These tests read the inventory the runner writes into the project root.
+
+    A fresh clone has none, so when it is missing, run the scanner once against an
+    empty material directory. That exercises the real no-templates branch and needs
+    neither After Effects nor any .aep file.
+    """
+    if INVENTORY_PATH.exists():
+        return
+    with tempfile.TemporaryDirectory(prefix="ae_inventory_empty_") as empty_root:
+        result = subprocess.run(
+            [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(PROJECT_ROOT / "scan_ae_templates.ps1"),
+                "-MaterialRoot",
+                empty_root,
+                "-OutputRoot",
+                str(PROJECT_ROOT),
+            ],
+            cwd=PROJECT_ROOT,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            capture_output=True,
+            timeout=60,
+        )
+    if not INVENTORY_PATH.exists():
+        pytest.skip(f"could not generate an inventory: {result.stderr or result.stdout}")
 
 
 def load_inventory():
-    with (PROJECT_ROOT / "template_inventory.json").open(encoding="utf-8-sig") as handle:
+    with INVENTORY_PATH.open(encoding="utf-8-sig") as handle:
         return json.load(handle)
 
 

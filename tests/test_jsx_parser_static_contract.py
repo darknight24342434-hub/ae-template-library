@@ -37,7 +37,11 @@ def test_parser_records_per_template_errors_without_stopping_batch():
     assert "catch (templateError)" in JSX
     assert "status: 'error'" in JSX
     assert "error: String(templateError)" in JSX
-    assert "output.templates.push(scanProject(templateConfig))" in JSX
+    # Each template is parsed inside the loop and its result streamed to its own
+    # file; the batch output carries a summary. (Superseded the older requirement
+    # that the full result be pushed onto one output object - see round 8.)
+    assert "scanProject(templateConfig" in JSX
+    assert "summarizeTemplate(templateResult" in JSX
 
 
 def test_parser_closes_projects_without_saving_on_success_and_error():
@@ -45,7 +49,10 @@ def test_parser_closes_projects_without_saving_on_success_and_error():
     assert "app.project.close(CloseOptions.DO_NOT_SAVE_CHANGES);" in JSX
     assert "finally {" in JSX
     assert "app.endSuppressDialogs(false);" in JSX
-    assert "app.quit();" in JSX
+    # The host is quit only when the runner launched it; a reused session is left
+    # open. (Superseded the older requirement of an unconditional quit - round 124.)
+    assert "releaseHostApplication(config)" in JSX
+    assert re.search(r"allowExistingAE[\s\S]{0,300}app\.quit\(\)", JSX)
 
 
 def test_render_comp_scoring_is_deterministic_for_ties():
